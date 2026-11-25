@@ -1,8 +1,7 @@
 export const MIN_WORD_LENGTH = 3
 export const DEFAULT_SECONDS = 180
-const SCORES: Record<number, number> = { 3: 1, 4: 1, 5: 2, 6: 3, 7: 5 }
 export function pointsFor(word: string): number {
-  return word.length >= 8 ? 11 : (SCORES[word.length] ?? 0)
+  return word.length >= 4 ? 5 : word.length === 3 ? 2 : 0
 }
 export function normalizeWord(word: string): string { return word.trim().toUpperCase() }
 

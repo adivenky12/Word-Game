@@ -1,0 +1,20 @@
+SCOWL word-list attribution
+
+The bundled English word list is derived from the SCOWL (Spell Checker Oriented Word Lists) collection distributed through the Debian hunspell-en-us package. The list is filtered to alphabetic words of 3–20 letters.
+
+The collective work is Copyright 2000–2011 by Kevin Atkinson, together with the copyrights noted by SCOWL.
+
+Permission to use, copy, modify, distribute and sell these word lists, the associated scripts, the output created from the scripts, and their documentation for any purpose is granted without fee, provided that this copyright notice and permission notice appear in all copies and supporting documentation. The word list is provided “as is” without express or implied warranty.
+
+SCOWL project: https://wordlist.aspell.net/
+
+
+CMU Sphinx pronunciation lexicon notice
+
+The bundled word list also includes alphabetic entries from the CMU Sphinx English pronunciation dictionary, distributed under the following BSD-style terms:
+
+Copyright 1995–2014 Carnegie Mellon University. All rights reserved. Copyright 2014–2015 Alpha Cephei Inc.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the copyright notice, this list of conditions and the disclaimer are retained in source distributions and reproduced in documentation/materials for binary distributions.
+
+The dictionary is provided “AS IS”, without express or implied warranties. Carnegie Mellon University and its contributors are not liable for damages arising from its use.

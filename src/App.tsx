@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Copy, Crown, DoorOpen, Gamepad2, Link2, Loader2, RefreshCw, Users, Volume2, VolumeX } from 'lucide-react'
 import { api, configured, supabase } from './lib/supabase'
 import { DEFAULT_SECONDS } from './lib/game'
@@ -21,6 +21,8 @@ export default function App() {
   const [serverOffset,setServerOffset]=useState(0)
   const [sound,setSound]=useState(false)
   const [selectedCells,setSelectedCells]=useState<number[]>([])
+  const selectedCellsRef=useRef<number[]>([])
+  const activePointerRef=useRef<number|null>(null)
   const audioRef=useRef<{context:AudioContext;oscillator:OscillatorNode;harmony:OscillatorNode;gain:GainNode;timer:number}|null>(null)
   const [seconds,setSeconds]=useState(DEFAULT_SECONDS)
   const [liveScores,setLiveScores]=useState(true)
@@ -95,36 +97,58 @@ export default function App() {
     const result=await run('submit',{code:room.code,word:candidate})
     if(result?.ok) setMessage(`Nice find! ${candidate}`)
     setWord('')
+    selectedCellsRef.current=[]
     setSelectedCells([])
+  }
+  function updateSelection(cells:number[]) {
+    selectedCellsRef.current=cells
+    setSelectedCells(cells)
+    if(room) setWord(cells.map(i=>room.board[i]==='Q'?'QU':room.board[i]).join(''))
   }
   function selectTile(index:number) {
     if(secondsLeft===0 || room?.status!=='playing') return
-    setSelectedCells([index])
-    const letter=room.board[index]
-    setWord(letter==='Q'?'QU':letter)
+    updateSelection([index])
   }
   function extendSelection(index:number) {
-    if(selectedCells.length===0 || !room) return
-    if(selectedCells.length>1 && index===selectedCells[selectedCells.length-2]) {
-      const shortened=selectedCells.slice(0,-1)
-      setSelectedCells(shortened)
-      setWord(shortened.map(i=>room.board[i]==='Q'?'QU':room.board[i]).join(''))
+    const selected=selectedCellsRef.current
+    if(selected.length===0 || !room) return
+    if(selected.length>1 && index===selected[selected.length-2]) {
+      updateSelection(selected.slice(0,-1))
       return
     }
-    if(selectedCells.includes(index)) return
-    const last=selectedCells[selectedCells.length-1]
+    if(selected.includes(index)) return
+    const last=selected[selected.length-1]
     const row=Math.floor(last/4), col=last%4
     const nextRow=Math.floor(index/4), nextCol=index%4
     if(Math.max(Math.abs(row-nextRow),Math.abs(col-nextCol))!==1) return
-    const next=[...selectedCells,index]
-    setSelectedCells(next)
-    setWord(next.map(i=>room.board[i]==='Q'?'QU':room.board[i]).join(''))
+    updateSelection([...selected,index])
+  }
+  function handleBoardPointerDown(e:ReactPointerEvent<HTMLDivElement>) {
+    const tile=(e.target as HTMLElement).closest<HTMLElement>('[data-index]')
+    if(!tile) return
+    e.preventDefault()
+    activePointerRef.current=e.pointerId
+    try { e.currentTarget.setPointerCapture(e.pointerId) } catch {}
+    selectTile(Number(tile.dataset.index))
+  }
+  function handleBoardPointerMove(e:ReactPointerEvent<HTMLDivElement>) {
+    if(activePointerRef.current!==e.pointerId) return
+    const tile=document.elementFromPoint(e.clientX,e.clientY)?.closest<HTMLElement>('[data-index]')
+    if(tile) extendSelection(Number(tile.dataset.index))
+  }
+  function clearSelection() {
+    activePointerRef.current=null
+    selectedCellsRef.current=[]
+    setSelectedCells([])
+    setWord('')
   }
   function finishSelection() {
-    if(selectedCells.length>0 && room) {
-      const selectedWord=selectedCells.map(i=>room.board[i]==='Q'?'QU':room.board[i]).join('')
+    const selected=selectedCellsRef.current
+    activePointerRef.current=null
+    if(selected.length>0 && room) {
+      const selectedWord=selected.map(i=>room.board[i]==='Q'?'QU':room.board[i]).join('')
       if(selectedWord.length>=3) void submitWord(selectedWord)
-      else { setSelectedCells([]); setWord('') }
+      else clearSelection()
     }
   }
   async function toggleMusic() {
@@ -140,10 +164,13 @@ export default function App() {
       return
     }
     try {
-      const context=new AudioContext()
+      const AudioContextCtor=window.AudioContext || (window as Window & {webkitAudioContext?: typeof AudioContext}).webkitAudioContext
+      if(!AudioContextCtor) throw new Error('Audio is not supported in this browser.')
+      const context=new AudioContextCtor()
       await context.resume()
+      if(context.state!=='running') throw new Error('Tap the music button again to allow audio playback.')
       const gain=context.createGain()
-      gain.gain.value=0.022
+      gain.gain.setValueAtTime(0.075,context.currentTime)
       gain.connect(context.destination)
       const oscillator=context.createOscillator()
       const harmony=context.createOscillator()
@@ -153,7 +180,7 @@ export default function App() {
       oscillator.frequency.value=notes[0]
       harmony.frequency.value=notes[0]/2
       const softGain=context.createGain()
-      softGain.gain.value=0.55
+      softGain.gain.value=0.72
       oscillator.connect(softGain)
       harmony.connect(softGain)
       softGain.connect(gain)
@@ -168,7 +195,7 @@ export default function App() {
       audioRef.current={context,oscillator,harmony,gain,timer}
       setSound(true)
     } catch {
-      setMessage('Your browser could not start the background music.')
+      setMessage('Music could not start. Check that your device is not muted, then tap Music on again.')
     }
   }
   async function copyInvite() {
@@ -176,7 +203,9 @@ export default function App() {
     catch { setMessage(invite) }
   }
   const me=room?.players.find(p=>p.id===playerId)
-  const leaderboard=[...(room?.players||[])].sort((a,b)=>b.score-a.score)
+  const leaderboard=[...(room?.players||[])].sort((a,b)=>b.score-a.score || a.nickname.localeCompare(b.nickname))
+  const placeFor=(index:number)=>index>0 && leaderboard[index]?.score===leaderboard[index-1]?.score ? placeFor(index-1) : index+1
+  const placeLabel=(place:number)=>`${place}${place===1?'st':place===2?'nd':place===3?'rd':'th'}`
   const myWords=me?.words||[]
 
   useEffect(()=>()=> {
@@ -228,22 +257,21 @@ export default function App() {
     {screen==='game' && room && <section className="game-layout">
       <div className="game-main panel">
         <div className="game-head"><div><span className="eyebrow">ROOM {room.code}</span><h1>Word <em>hunt</em></h1></div><div className={`timer ${secondsLeft<20?'urgent':''}`}><span>TIME LEFT</span><b>{Math.floor(secondsLeft/60)}:{String(secondsLeft%60).padStart(2,'0')}</b></div></div>
-        <p className="drag-hint">Drag across touching letters to make a word · or type below</p>
-        <div className="board" onPointerUp={finishSelection} onPointerCancel={()=>setSelectedCells([])}>
+        <p className="drag-hint">Touch and slide across neighboring letters · release to submit · or type below</p>
+        <div className="board" onPointerDown={handleBoardPointerDown} onPointerMove={handleBoardPointerMove} onPointerUp={finishSelection} onPointerCancel={clearSelection} onLostPointerCapture={()=>{activePointerRef.current=null}} >
           {room.board.map((letter,i)=><div
             className={`tile ${selectedCells.includes(i)?'selected':''}`}
             key={i}
-            onPointerDown={e=>{e.preventDefault();selectTile(i)}}
-            onPointerEnter={()=>extendSelection(i)}
+            data-index={i}
             aria-label={`Letter ${letter==='Q'?'Qu':letter}`}
           >{letter==='Q'?'Qu':letter}</div>)}
         </div>
-        <form className="word-form" onSubmit={e=>{e.preventDefault();void submitWord()}}><input autoComplete="off" value={word} onChange={e=>{setWord(e.target.value);setSelectedCells([])}} placeholder="Or type a word…" disabled={secondsLeft===0}/><button className="primary" disabled={busy||!word.trim()||secondsLeft===0}>Submit</button></form>
+        <form className="word-form" onSubmit={e=>{e.preventDefault();void submitWord()}}><input autoComplete="off" value={word} onChange={e=>{setWord(e.target.value);selectedCellsRef.current=[];setSelectedCells([])}} placeholder="Or type a word…" disabled={secondsLeft===0}/><button className="primary" disabled={busy||!word.trim()||secondsLeft===0}>Submit</button></form>
         <div className="word-list"><b>Your words ({myWords.length})</b><div>{myWords.length?myWords.map(w=><span className="word-chip" key={w}>{w}</span>):<small>Your discoveries will appear here.</small>}</div></div>
       </div>
-      <aside className="panel score-panel"><div className="score-title"><h2><Users size={18}/> Players</h2><button className="ghost small music-toggle" onClick={()=>void toggleMusic()} aria-label={sound?'Turn music off':'Turn music on'}>{sound?<Volume2 size={17}/>:<VolumeX size={17}/>} {sound?'Music on':'Music off'}</button></div>{leaderboard.map((p,i)=><div className="score-row" key={p.id}><span className="rank">{i+1}</span><span className="score-name">{p.nickname}{p.id===playerId?' (you)':''}</span>{room.liveScores&&<b>{p.score}</b>}</div>)}<p className="muted tiny">Scores are validated by the game service.</p><button className="ghost wide" onClick={refresh}>Refresh status</button></aside>
+      <aside className="panel score-panel"><div className="score-title"><h2><Crown size={18}/> Leaderboard</h2><button className="ghost small music-toggle" onClick={()=>void toggleMusic()} aria-label={sound?'Turn music off':'Turn music on'}>{sound?<Volume2 size={17}/>:<VolumeX size={17}/>} {sound?'Music on':'Enable music'}</button></div>{leaderboard.map((p,i)=>{const place=placeFor(i);return <div className={`score-row ${place<=3?`score-place-${place}`:''}`} key={p.id}><span className="rank">{placeLabel(place)}</span><span className="score-name">{p.nickname}{p.id===playerId?' (you)':''}</span>{room.liveScores&&<b>{p.score} pts</b>}</div>})}<p className="muted tiny scoring-help">Scoring: shared word = 1 point each · solo 3-letter word = 2 points · solo word of 4+ letters = 5 points.</p><button className="ghost wide" onClick={refresh}>Refresh status</button></aside>
     </section>}
-    {screen==='results' && room && <section className="panel results-panel"><span className="eyebrow">ROUND COMPLETE</span><h1>Well <em>played!</em></h1><p className="muted">Here’s how your word hunters did.</p><div className="leaderboard">{leaderboard.map((p,i)=><div className="leader-row" key={p.id}><span className="rank">{i+1}</span><div className="leader-detail"><b>{p.nickname}</b><small>{p.words.length} unique words · {p.words.join(', ')||'No words found'}</small></div><strong>{p.score} pts</strong></div>)}</div>
+    {screen==='results' && room && <section className="panel results-panel"><span className="eyebrow">ROUND COMPLETE</span><h1>Well <em>played!</em></h1><p className="muted">Here’s how your word hunters did.</p><div className="leaderboard">{leaderboard.map((p,i)=>{const place=placeFor(i);return <div className={`leader-row ${place<=3?`leader-place-${place}`:''}`} key={p.id}><span className="rank">{placeLabel(place)}</span><div className="leader-detail"><b>{p.nickname}{place===1?' · Winner':''}</b><small>{p.words.length} unique words · {p.words.join(', ')||'No words found'}</small></div><strong>{p.score} pts</strong></div>})}</div>
       <div className="result-summary"><div><b>{Object.values(room.words).flat().length}</b><small>Unique submissions</small></div><div><b>{Object.values(room.words).flat().filter(w=>Object.values(room.words).filter(a=>a.includes(w)).length>1).length}</b><small>Shared words</small></div></div>
       {room.hostId===playerId?<button className="primary wide" onClick={()=>run('replay',{code:room.code})}> <RefreshCw size={17}/> Play again</button>:<p className="waiting-note">The host can start another round when ready.</p>}
     </section>}

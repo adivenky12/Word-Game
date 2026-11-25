@@ -18,3 +18,38 @@ button,input,select{font:inherit}button{cursor:pointer}.app-shell{max-width:1160
 .tile:nth-child(4n){animation:tile-in .5s ease both}
 @keyframes tile-in{from{opacity:.55;transform:translateY(7px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Mobile-first game feel and clearer touch interaction */
+:root{color-scheme:light}
+body{background:radial-gradient(ellipse at 12% 0%,#e3eaff 0,transparent 38%),radial-gradient(ellipse at 92% 18%,#ffe1e9 0,transparent 34%),linear-gradient(145deg,#f8faff,#f5f6ff 55%,#fff7f8)}
+.app-shell{max-width:1240px}
+.panel{box-shadow:0 18px 55px rgba(34,48,95,.09);backdrop-filter:blur(12px)}
+.brand-icon{background:linear-gradient(145deg,#263b78,#5369c8);box-shadow:0 7px 18px rgba(55,76,160,.24)}
+.primary{background:linear-gradient(120deg,#273b7c,#485fc0);box-shadow:0 8px 18px rgba(55,76,160,.2)}
+.primary:hover{background:linear-gradient(120deg,#30498f,#5b70d1);box-shadow:0 10px 22px rgba(55,76,160,.25)}
+.game-main{background:linear-gradient(160deg,rgba(255,255,255,.98),rgba(248,250,255,.96))}
+.board{width:min(100%,500px);gap:clamp(6px,1.5vw,12px);padding:10px;border-radius:24px;background:linear-gradient(145deg,#f1f4ff,#fff5f7);box-shadow:inset 0 1px 0 #fff,0 12px 32px rgba(47,63,119,.08);touch-action:none;overscroll-behavior:contain}
+.tile{position:relative;min-width:0;border-radius:clamp(10px,2vw,17px);background:linear-gradient(150deg,#fff,#e9edff);border:1px solid #dce3fb;box-shadow:0 5px 0 #d6def6,0 8px 16px rgba(48,64,122,.07);font-size:clamp(25px,5.4vw,43px);touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;cursor:pointer}
+.tile:active{transform:scale(.95)}
+.tile.selected{background:linear-gradient(145deg,#ffb8ca,#ff789d);border-color:#f45b88;color:#fff;box-shadow:0 5px 0 #df527b,0 8px 18px rgba(224,73,119,.24);transform:scale(.94)}
+.drag-hint{max-width:520px;margin:18px auto -8px;padding:10px 14px;border-radius:12px;background:#f1f4ff;color:#58658d;font-weight:700;line-height:1.45}
+.timer{background:linear-gradient(145deg,#eef1ff,#e4eaff);border:1px solid #e0e6ff;box-shadow:0 5px 14px rgba(60,78,150,.08)}
+.timer.urgent{background:linear-gradient(145deg,#fff0f3,#ffe1e8);border-color:#ffd1dc}
+.music-toggle{border:1px solid #e4e8f5;background:#f7f8ff;color:#4d5b91;border-radius:999px}
+.scoring-help{font-size:11px;line-height:1.55;background:#f6f7ff;border-radius:12px;padding:11px 12px;margin:14px 0}
+.score-row{border-radius:10px;padding-left:8px;padding-right:8px}
+.score-row:first-of-type{background:#fff9e8}
+.word-chip{border:1px solid #cceedd}
+.toast{max-width:min(92vw,520px);text-align:center;line-height:1.4}
+@media(max-width:800px){.app-shell{padding:14px 12px 18px}.topbar{margin-bottom:22px}.game-layout{gap:13px}.game-main{padding:clamp(12px,3vw,20px)}.board{width:min(100%,520px);gap:7px;margin:16px auto;padding:8px}.tile{border-radius:12px}.score-panel{padding:17px}}
+@media(max-width:480px){.topbar{align-items:center}.brand{font-size:17px}.brand-icon{width:34px;height:34px}.privacy-pill{padding:7px 9px}.game-head{gap:8px}.game-head h1{font-size:32px}.timer{min-width:82px;padding:8px 10px}.timer b{font-size:21px}.drag-hint{font-size:11px;padding:9px 10px}.board{gap:6px;padding:7px;border-radius:18px}.tile{border-radius:10px;font-size:clamp(24px,8vw,36px);box-shadow:0 4px 0 #d6def6}.tile.selected{box-shadow:0 4px 0 #df527b}.score-title{gap:6px}.music-toggle{font-size:11px;padding:8px 10px}.scoring-help{font-size:10px}}
+@media(hover:none){.tile:hover{transform:none;box-shadow:0 5px 0 #dce1f4}.primary:hover,.secondary:hover,.ghost:hover{transform:none}}
+
+/* Ranked leaderboard: highest score first, with tied players sharing a place. */
+.score-row .rank,.leader-row .rank{width:42px;min-width:42px;height:29px;border-radius:9px;font-size:11px;background:#f0f2fa;color:#64708e}
+.score-row.score-place-1,.leader-row.leader-place-1{background:linear-gradient(90deg,#fff6d9,#fffdf6);border:1px solid #f4df9d}
+.score-row.score-place-1 .rank,.leader-row.leader-place-1 .rank{background:#f5c84c;color:#593e00}
+.score-row.score-place-2 .rank,.leader-row.leader-place-2 .rank{background:#e5eaf2;color:#42516b}
+.score-row.score-place-3 .rank,.leader-row.leader-place-3 .rank{background:#f4dfd0;color:#87502d}
+.score-row.score-place-1 .score-name,.leader-place-1 .leader-detail b{color:#805600}
+.score-panel h2{letter-spacing:-.2px}

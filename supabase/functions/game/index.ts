@@ -116,12 +116,16 @@ Deno.serve(async (req) => {
       state.words[word]=[...previousOwners,id];
       me.words.push(word);
       if(previousOwners.length===0) {
+        // A word submitted by only one player is worth 2 points at 3 letters,
+        // or 5 points at 4+ letters. This is provisional until the round ends.
         me.score+=pointsFor(word);
-      } else if(previousOwners.length===1) {
-        // The first submitter was provisionally awarded points. Remove that
-        // one award once the word becomes shared. Later submitters do nothing.
-        const firstOwner=player(state,previousOwners[0]);
-        if(firstOwner) firstOwner.score=Math.max(0,firstOwner.score-pointsFor(word));
+      } else {
+        // Once another player finds the same word, it is shared: 1 point each.
+        if(previousOwners.length===1) {
+          const firstOwner=player(state,previousOwners[0]);
+          if(firstOwner) firstOwner.score=Math.max(0,firstOwner.score-pointsFor(word)+1);
+        }
+        me.score+=1;
       }
       await save(code,state); return json({ok:true,room:publicRoom(state)});
     }

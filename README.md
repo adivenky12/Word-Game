@@ -45,9 +45,9 @@ npm run build
 3. Deploy the Edge Function from this project root:
 
 ```bash
-supabase login
-supabase link --project-ref YOUR_PROJECT_REF
-supabase functions deploy game --no-verify-jwt
+npx supabase login
+npx supabase link --project-ref YOUR_PROJECT_REF
+npx supabase functions deploy game --no-verify-jwt
 ```
 
 4. Set the Edge Function's server-side secrets. Supabase provides `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to deployed functions by default. Confirm this in the project dashboard. Do not expose the service-role key to the browser.
@@ -61,12 +61,12 @@ The `game_rooms` table has RLS enabled and no client policies. The frontend does
 A GitHub Pages deployment updates only the website. If files under `supabase/functions/` change, deploy the Edge Function separately from the project root:
 
 ```bash
-supabase login
-supabase link --project-ref YOUR_PROJECT_REF
-supabase functions deploy game --no-verify-jwt
+npx supabase login
+npx supabase link --project-ref YOUR_PROJECT_REF
+npx supabase functions deploy game --no-verify-jwt
 ```
 
-The `supabase link` step is needed only once on a computer. For this update, the server-side word-path helper changed so the Q tile correctly counts as `QU`; deploy the `game` function after pushing the frontend update.
+The `supabase link` step is needed only once on a computer. This update changes both `supabase/functions/game/index.ts` and files in `supabase/functions/_shared/`, including the larger dictionary and scoring rules. Deploy the whole function from the project root with the Supabase CLI; updating only `index.ts` in the dashboard will not update the shared dictionary. If the CLI is not installed globally, use `npx supabase` for each command.
 
 ## GitHub Pages deployment
 
@@ -98,3 +98,8 @@ Create a room with a nickname, share the room invitation URL, and have another p
 ## Free-tier caveat
 
 GitHub Pages and Supabase have plan limits, quotas, fair-use terms, and service availability policies that can change. A free plan is not a guarantee of unlimited hosting or uptime. No paid service is required by this code, but exceeding a free tier can require waiting, reducing usage, or upgrading.
+
+
+### Dictionary and scoring
+
+The game accepts alphabetic US-English words from the bundled SCOWL/Hunspell-based word list and common inflected forms (3–20 letters), subject to the board path. The word list license and attribution are in `WORDLIST-LICENSE.txt`. Scoring: a word found by only one player is worth 2 points if it has 3 letters, or 5 points if it has 4 or more letters. If multiple players find the same word, it is worth 1 point to each player.

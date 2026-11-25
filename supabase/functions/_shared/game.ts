@@ -1,5 +1,5 @@
 export function pointsFor(word: string): number {
-  const n=word.length; return n>=8?11:n===7?5:n===6?3:n===5?2:n>=3?1:0;
+  return word.length >= 4 ? 5 : word.length === 3 ? 2 : 0;
 }
 export function generateBoard(): string[] {
   const dice=['AAEEGN','ABBJOO','ACHOPS','AFFKPS','AOOTTW','CIMOTU','DEILRX','DELRVY','DISTTY','EEGHNW','EEINSU','EHRTVW','EIOSST','ELRTTY','HIMNQU','HLNNRZ'];
