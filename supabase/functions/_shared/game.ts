@@ -143,7 +143,9 @@ export function generateBoard(random: () => number = () => crypto.getRandomValue
     }
     if (three >= MIN_THREE_LETTER_WORDS && four >= MIN_FOUR_LETTER_WORDS) return bestBoard;
   }
-  throw new Error("Board generation could not verify the minimum word counts. Check the deployed dictionary and game logic.");
+  throw new Error(
+    `Board generation could not verify minimums. Diagnostics: dictionaryWords=${dictionary.size}, fallback3=${fallbackThree}, fallback4=${fallbackFour}, bestScore=${bestScore}.`
+  );
 }
 
 export function canMakeWord(board: string[], word: string): boolean {
