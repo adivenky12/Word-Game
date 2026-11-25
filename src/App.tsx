@@ -11,7 +11,7 @@ const getSaved = () => { try { return JSON.parse(sessionStorage.getItem('letter-
 
 export default function App() {
   const [room,setRoom]=useState<Room|null>(null)
-  const [playerId,setPlayerId]=useState<string>(getSaved()?.id || randomId())
+  const [playerId]=useState<string>(getSaved()?.id || randomId())
   const [nickname,setNickname]=useState(getSaved()?.nickname || '')
   const [code,setCode]=useState(new URLSearchParams(location.search).get('room') || '')
   const [word,setWord]=useState('')
@@ -50,13 +50,32 @@ export default function App() {
     const data=await run('snapshot',{code:room.code})
     if(data?.room) applyRoom(data.room)
   }
-  useEffect(()=>{
-    if(!room || !supabase) return
-    const channel=supabase.channel(`room:${room.code}`)
-      .on('postgres_changes',{event:'*',schema:'public',table:'game_rooms',filter:`code=eq.${room.code}`},()=>{ void refresh() })
-      .subscribe()
-    const poll=window.setInterval(()=>{void refresh()},5000)
-    return ()=>{window.clearInterval(poll);void supabase.removeChannel(channel)}
+  useEffect(() => {
+    if (!room || !supabase) return
+
+    const client = supabase
+
+    const channel = client.channel(`room:${room.code}`)
+        .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'game_rooms',
+              filter: `code=eq.${room.code}`
+            },
+            () => { void refresh() }
+        )
+        .subscribe()
+
+    const poll = window.setInterval(() => {
+      void refresh()
+    }, 5000)
+
+    return () => {
+      window.clearInterval(poll)
+      void client.removeChannel(channel)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[room?.code])
   useEffect(()=>{
@@ -103,7 +122,7 @@ export default function App() {
       <div className="room-heading"><div><span className="eyebrow">WAITING LOBBY</span><h1>Room <em>{room.code}</em></h1><p>Share the invite with your crew. The host starts when everyone is ready.</p></div><div className="room-actions"><button className="secondary small" onClick={copyInvite}><Copy size={16}/> Copy invite</button><button className="ghost small" onClick={refresh}><RefreshCw size={16}/></button></div></div>
       <div className="invite-box"><Link2 size={17}/><span>{invite}</span><button onClick={copyInvite}>Copy</button></div>
       <h2><Users size={18}/> Players <span className="count">{room.players.length}/12</span></h2>
-      <div className="player-grid">{room.players.map((p,i)=><div className="player-card" key={p.id}><span className="avatar">{p.nickname.slice(0,1).toUpperCase()}</span><span><b>{p.nickname}</b><small>{p.id===room.hostId?'Host':p.online?'Connected':'Reconnecting'}</small></span>{p.id===room.hostId&&<Crown size={16} className="crown"/>}</div>)}</div>
+      <div className="player-grid">{room.players.map((p)=><div className="player-card" key={p.id}><span className="avatar">{p.nickname.slice(0,1).toUpperCase()}</span><span><b>{p.nickname}</b><small>{p.id===room.hostId?'Host':p.online?'Connected':'Reconnecting'}</small></span>{p.id===room.hostId&&<Crown size={16} className="crown"/>}</div>)}</div>
       {me?.id===room.hostId?<button className="primary wide" disabled={busy||room.players.length<2} onClick={()=>run('start',{code:room.code})}>Start game · {room.players.length} players</button>:<p className="waiting-note">Waiting for the host to start the round…</p>}
     </section>}
     {screen==='game' && room && <section className="game-layout">
