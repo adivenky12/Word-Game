@@ -204,7 +204,10 @@ export default function App() {
   }
   const me=room?.players.find(p=>p.id===playerId)
   const leaderboard=[...(room?.players||[])].sort((a,b)=>b.score-a.score || a.nickname.localeCompare(b.nickname))
-  const placeFor=(index:number)=>index>0 && leaderboard[index]?.score===leaderboard[index-1]?.score ? placeFor(index-1) : index+1
+  const placeFor = (index: number): number =>
+      index > 0 && leaderboard[index]?.score === leaderboard[index - 1]?.score
+          ? placeFor(index - 1)
+          : index + 1
   const placeLabel=(place:number)=>`${place}${place===1?'st':place===2?'nd':place===3?'rd':'th'}`
   const myWords=me?.words||[]
 
