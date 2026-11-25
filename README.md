@@ -56,6 +56,18 @@ supabase functions deploy game --no-verify-jwt
 
 The `game_rooms` table has RLS enabled and no client policies. The frontend does not query room data directly; it calls the Edge Function.
 
+## Deploying updates to an existing project
+
+A GitHub Pages deployment updates only the website. If files under `supabase/functions/` change, deploy the Edge Function separately from the project root:
+
+```bash
+supabase login
+supabase link --project-ref YOUR_PROJECT_REF
+supabase functions deploy game --no-verify-jwt
+```
+
+The `supabase link` step is needed only once on a computer. For this update, the server-side word-path helper changed so the Q tile correctly counts as `QU`; deploy the `game` function after pushing the frontend update.
+
 ## GitHub Pages deployment
 
 1. Create a **public** repository named `family-word-game` (or any name).
@@ -71,7 +83,7 @@ The Vite config derives the GitHub Pages base path from `GITHUB_REPOSITORY`, so 
 
 ## Play
 
-Create a room with a nickname, share the room invitation URL, and have another player join. The host starts once at least two players have joined. The host can replay after the round ends.
+Create a room with a nickname, share the room invitation URL, and have another player join. Each room has exactly one host: the player who created it. Only that host can start or replay a round; the Edge Function checks this on the server. During a round, drag or slide across adjacent letter tiles to submit a word, or use the typing field. Optional, low-volume synthesized background music can be switched on or off by each player.
 
 ## Before wider release
 

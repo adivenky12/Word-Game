@@ -9,11 +9,14 @@ export function generateBoard(): string[] {
 export function canMakeWord(board:string[], word:string):boolean {
   if(board.length!==16||word.length<3||!/^[A-Z]+$/.test(word))return false;
   const visit=(p:number,k:number,used:number):boolean=>{
-    if(board[p]!==word[k])return false;
-    if(k===word.length-1)return true;
+    const letters=board[p]==="Q"?"QU":board[p];
+    if(!word.startsWith(letters,k))return false;
+    const nextK=k+letters.length;
+    if(nextK===word.length)return true;
+    if(nextK>word.length)return false;
     const mask=used|(1<<p),r=Math.floor(p/4),c=p%4;
     for(let rr=Math.max(0,r-1);rr<=Math.min(3,r+1);rr++)for(let cc=Math.max(0,c-1);cc<=Math.min(3,c+1);cc++){
-      const q=rr*4+cc;if(q!==p&&!(mask&(1<<q))&&visit(q,k+1,mask))return true;
+      const q=rr*4+cc;if(q!==p&&!(mask&(1<<q))&&visit(q,nextK,mask))return true;
     }return false;
   };
   for(let i=0;i<16;i++)if(visit(i,0,0))return true;

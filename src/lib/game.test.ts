@@ -11,6 +11,7 @@ describe('scoring',()=>{
 describe('board',()=>{
   it('generates sixteen letters',()=>expect(generateBoard()).toHaveLength(16))
   it('finds a path across adjacent tiles',()=>expect(canMakeWord(['C','A','T',...'ABCDEFGHIJKLM'.split('')],'CAT')).toBe(true))
+  it('treats a Q tile as QU',()=>expect(canMakeWord(['Q','A','T',...'ABCDEFGHIJKLM'.split('')],'QUAT')).toBe(true))
   it('rejects reuse of a tile',()=>expect(canMakeWord(['A','B','X','X','X','X','X','X','X','X','X','X','X','X','X','X'],'ABA')).toBe(false))
   it('rejects non-adjacent letters',()=>expect(canMakeWord(['C','X','X','X','X','X','X','X','X','X','X','X','X','X','X','A'],'CAT')).toBe(false))
 })

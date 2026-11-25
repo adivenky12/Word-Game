@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { canMakeWord, generateBoard, pointsFor } from "../_shared/game.ts";
+import { generateBoard, pointsFor } from "../_shared/game.ts";
 import { isDictionaryWord } from "../_shared/dictionary.ts";
 
 const url = Deno.env.get("SUPABASE_URL")!;
@@ -29,6 +29,30 @@ async function save(code: string, state: any) {
 }
 function publicRoom(state: any) { return state; }
 function player(state: any, id: string) { return state.players.find((p:any)=>p.id===id); }
+
+// A Boggle Q tile represents the two letters QU.
+function canMakeWord(board: string[], word: string): boolean {
+  if (board.length !== 16 || word.length < 3 || !/^[A-Z]+$/.test(word)) return false;
+  const visit = (pos: number, offset: number, used: number): boolean => {
+    const letters = board[pos] === "Q" ? "QU" : board[pos];
+    if (!word.startsWith(letters, offset)) return false;
+    const nextOffset = offset + letters.length;
+    if (nextOffset === word.length) return true;
+    if (nextOffset > word.length) return false;
+    const nextUsed = used | (1 << pos);
+    const row = Math.floor(pos / 4), col = pos % 4;
+    for (let r = Math.max(0, row - 1); r <= Math.min(3, row + 1); r++) {
+      for (let c = Math.max(0, col - 1); c <= Math.min(3, col + 1); c++) {
+        const next = r * 4 + c;
+        if (next === pos || (nextUsed & (1 << next))) continue;
+        if (visit(next, nextOffset, nextUsed)) return true;
+      }
+    }
+    return false;
+  };
+  for (let i = 0; i < 16; i++) if (visit(i, 0, 0)) return true;
+  return false;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

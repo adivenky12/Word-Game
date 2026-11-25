@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Copy, Crown, DoorOpen, Gamepad2, Link2, Loader2, RefreshCw, Users, Volume2, VolumeX } from 'lucide-react'
 import { api, configured, supabase } from './lib/supabase'
 import { DEFAULT_SECONDS } from './lib/game'
@@ -20,6 +20,8 @@ export default function App() {
   const [secondsLeft,setSecondsLeft]=useState(DEFAULT_SECONDS)
   const [serverOffset,setServerOffset]=useState(0)
   const [sound,setSound]=useState(false)
+  const [selectedCells,setSelectedCells]=useState<number[]>([])
+  const audioRef=useRef<{context:AudioContext;oscillator:OscillatorNode;harmony:OscillatorNode;gain:GainNode;timer:number}|null>(null)
   const [seconds,setSeconds]=useState(DEFAULT_SECONDS)
   const [liveScores,setLiveScores]=useState(true)
   const [screen,setScreen]=useState<'home'|'lobby'|'game'|'results'>('home')
@@ -87,10 +89,87 @@ export default function App() {
     if(room?.status==='playing' && secondsLeft===0) void run('finish',{code:room.code})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[secondsLeft,room?.status])
-  async function submitWord() {
-    if(!room || !word.trim()) return
-    const result=await run('submit',{code:room.code,word:word.trim()})
-    if(result?.ok) setWord('')
+  async function submitWord(value=word) {
+    const candidate=value.trim().toUpperCase()
+    if(!room || !candidate) return
+    const result=await run('submit',{code:room.code,word:candidate})
+    if(result?.ok) setMessage(`Nice find! ${candidate}`)
+    setWord('')
+    setSelectedCells([])
+  }
+  function selectTile(index:number) {
+    if(secondsLeft===0 || room?.status!=='playing') return
+    setSelectedCells([index])
+    const letter=room.board[index]
+    setWord(letter==='Q'?'QU':letter)
+  }
+  function extendSelection(index:number) {
+    if(selectedCells.length===0 || !room) return
+    if(selectedCells.length>1 && index===selectedCells[selectedCells.length-2]) {
+      const shortened=selectedCells.slice(0,-1)
+      setSelectedCells(shortened)
+      setWord(shortened.map(i=>room.board[i]==='Q'?'QU':room.board[i]).join(''))
+      return
+    }
+    if(selectedCells.includes(index)) return
+    const last=selectedCells[selectedCells.length-1]
+    const row=Math.floor(last/4), col=last%4
+    const nextRow=Math.floor(index/4), nextCol=index%4
+    if(Math.max(Math.abs(row-nextRow),Math.abs(col-nextCol))!==1) return
+    const next=[...selectedCells,index]
+    setSelectedCells(next)
+    setWord(next.map(i=>room.board[i]==='Q'?'QU':room.board[i]).join(''))
+  }
+  function finishSelection() {
+    if(selectedCells.length>0 && room) {
+      const selectedWord=selectedCells.map(i=>room.board[i]==='Q'?'QU':room.board[i]).join('')
+      if(selectedWord.length>=3) void submitWord(selectedWord)
+      else { setSelectedCells([]); setWord('') }
+    }
+  }
+  async function toggleMusic() {
+    const active=audioRef.current
+    if(active) {
+      window.clearInterval(active.timer)
+      active.gain.gain.setTargetAtTime(0,active.context.currentTime,0.18)
+      active.oscillator.stop(active.context.currentTime+0.7)
+      active.harmony.stop(active.context.currentTime+0.7)
+      window.setTimeout(()=>{void active.context.close()},800)
+      audioRef.current=null
+      setSound(false)
+      return
+    }
+    try {
+      const context=new AudioContext()
+      await context.resume()
+      const gain=context.createGain()
+      gain.gain.value=0.022
+      gain.connect(context.destination)
+      const oscillator=context.createOscillator()
+      const harmony=context.createOscillator()
+      oscillator.type='sine'
+      harmony.type='triangle'
+      const notes=[261.63,329.63,392,329.63,293.66,349.23,440,349.23]
+      oscillator.frequency.value=notes[0]
+      harmony.frequency.value=notes[0]/2
+      const softGain=context.createGain()
+      softGain.gain.value=0.55
+      oscillator.connect(softGain)
+      harmony.connect(softGain)
+      softGain.connect(gain)
+      oscillator.start()
+      harmony.start()
+      let step=0
+      const timer=window.setInterval(()=>{
+        step=(step+1)%notes.length
+        oscillator.frequency.setTargetAtTime(notes[step],context.currentTime,0.25)
+        harmony.frequency.setTargetAtTime(notes[step]/2,context.currentTime,0.25)
+      },850)
+      audioRef.current={context,oscillator,harmony,gain,timer}
+      setSound(true)
+    } catch {
+      setMessage('Your browser could not start the background music.')
+    }
   }
   async function copyInvite() {
     try { await navigator.clipboard.writeText(invite);setMessage('Invitation link copied!') }
@@ -99,6 +178,27 @@ export default function App() {
   const me=room?.players.find(p=>p.id===playerId)
   const leaderboard=[...(room?.players||[])].sort((a,b)=>b.score-a.score)
   const myWords=me?.words||[]
+
+  useEffect(()=>()=> {
+    const active=audioRef.current
+    if(active) {
+      window.clearInterval(active.timer)
+      try { active.oscillator.stop(); active.harmony.stop() } catch {}
+      void active.context.close()
+    }
+  },[])
+  useEffect(()=>{
+    if(room?.status!=='playing' && audioRef.current) {
+      const active=audioRef.current
+      window.clearInterval(active.timer)
+      active.gain.gain.setTargetAtTime(0,active.context.currentTime,0.18)
+      active.oscillator.stop(active.context.currentTime+0.7)
+      active.harmony.stop(active.context.currentTime+0.7)
+      window.setTimeout(()=>{void active.context.close()},800)
+      audioRef.current=null
+      setSound(false)
+    }
+  },[room?.status])
 
   return <main className="app-shell">
     <header className="topbar"><a className="brand" href="#" onClick={()=>{setRoom(null);setScreen('home')}}><span className="brand-icon"><Gamepad2 size={22}/></span> Letter League</a><span className="privacy-pill">Private family game</span></header>
@@ -119,7 +219,7 @@ export default function App() {
       </div>
     </section>}
     {screen==='lobby' && room && <section className="panel room-panel">
-      <div className="room-heading"><div><span className="eyebrow">WAITING LOBBY</span><h1>Room <em>{room.code}</em></h1><p>Share the invite with your crew. The host starts when everyone is ready.</p></div><div className="room-actions"><button className="secondary small" onClick={copyInvite}><Copy size={16}/> Copy invite</button><button className="ghost small" onClick={refresh}><RefreshCw size={16}/></button></div></div>
+      <div className="room-heading"><div><span className="eyebrow">WAITING LOBBY</span><h1>Room <em>{room.code}</em></h1><p>Share the invite with your crew. Only the room creator is host and can start or restart the game.</p></div><div className="room-actions"><button className="secondary small" onClick={copyInvite}><Copy size={16}/> Copy invite</button><button className="ghost small" onClick={refresh}><RefreshCw size={16}/></button></div></div>
       <div className="invite-box"><Link2 size={17}/><span>{invite}</span><button onClick={copyInvite}>Copy</button></div>
       <h2><Users size={18}/> Players <span className="count">{room.players.length}/12</span></h2>
       <div className="player-grid">{room.players.map((p)=><div className="player-card" key={p.id}><span className="avatar">{p.nickname.slice(0,1).toUpperCase()}</span><span><b>{p.nickname}</b><small>{p.id===room.hostId?'Host':p.online?'Connected':'Reconnecting'}</small></span>{p.id===room.hostId&&<Crown size={16} className="crown"/>}</div>)}</div>
@@ -128,11 +228,20 @@ export default function App() {
     {screen==='game' && room && <section className="game-layout">
       <div className="game-main panel">
         <div className="game-head"><div><span className="eyebrow">ROOM {room.code}</span><h1>Word <em>hunt</em></h1></div><div className={`timer ${secondsLeft<20?'urgent':''}`}><span>TIME LEFT</span><b>{Math.floor(secondsLeft/60)}:{String(secondsLeft%60).padStart(2,'0')}</b></div></div>
-        <div className="board">{room.board.map((letter,i)=><div className="tile" key={i}>{letter==='Q'?'Qu':letter}</div>)}</div>
-        <form className="word-form" onSubmit={e=>{e.preventDefault();void submitWord()}}><input autoComplete="off" value={word} onChange={e=>setWord(e.target.value)} placeholder="Type a word…" disabled={secondsLeft===0}/><button className="primary" disabled={busy||!word.trim()||secondsLeft===0}>Submit</button></form>
+        <p className="drag-hint">Drag across touching letters to make a word · or type below</p>
+        <div className="board" onPointerUp={finishSelection} onPointerCancel={()=>setSelectedCells([])}>
+          {room.board.map((letter,i)=><div
+            className={`tile ${selectedCells.includes(i)?'selected':''}`}
+            key={i}
+            onPointerDown={e=>{e.preventDefault();selectTile(i)}}
+            onPointerEnter={()=>extendSelection(i)}
+            aria-label={`Letter ${letter==='Q'?'Qu':letter}`}
+          >{letter==='Q'?'Qu':letter}</div>)}
+        </div>
+        <form className="word-form" onSubmit={e=>{e.preventDefault();void submitWord()}}><input autoComplete="off" value={word} onChange={e=>{setWord(e.target.value);setSelectedCells([])}} placeholder="Or type a word…" disabled={secondsLeft===0}/><button className="primary" disabled={busy||!word.trim()||secondsLeft===0}>Submit</button></form>
         <div className="word-list"><b>Your words ({myWords.length})</b><div>{myWords.length?myWords.map(w=><span className="word-chip" key={w}>{w}</span>):<small>Your discoveries will appear here.</small>}</div></div>
       </div>
-      <aside className="panel score-panel"><div className="score-title"><h2><Users size={18}/> Players</h2><button className="ghost small" onClick={()=>setSound(!sound)}>{sound?<Volume2 size={17}/>:<VolumeX size={17}/>}</button></div>{leaderboard.map((p,i)=><div className="score-row" key={p.id}><span className="rank">{i+1}</span><span className="score-name">{p.nickname}{p.id===playerId?' (you)':''}</span>{room.liveScores&&<b>{p.score}</b>}</div>)}<p className="muted tiny">Scores are validated by the game service.</p><button className="ghost wide" onClick={refresh}>Refresh status</button></aside>
+      <aside className="panel score-panel"><div className="score-title"><h2><Users size={18}/> Players</h2><button className="ghost small music-toggle" onClick={()=>void toggleMusic()} aria-label={sound?'Turn music off':'Turn music on'}>{sound?<Volume2 size={17}/>:<VolumeX size={17}/>} {sound?'Music on':'Music off'}</button></div>{leaderboard.map((p,i)=><div className="score-row" key={p.id}><span className="rank">{i+1}</span><span className="score-name">{p.nickname}{p.id===playerId?' (you)':''}</span>{room.liveScores&&<b>{p.score}</b>}</div>)}<p className="muted tiny">Scores are validated by the game service.</p><button className="ghost wide" onClick={refresh}>Refresh status</button></aside>
     </section>}
     {screen==='results' && room && <section className="panel results-panel"><span className="eyebrow">ROUND COMPLETE</span><h1>Well <em>played!</em></h1><p className="muted">Here’s how your word hunters did.</p><div className="leaderboard">{leaderboard.map((p,i)=><div className="leader-row" key={p.id}><span className="rank">{i+1}</span><div className="leader-detail"><b>{p.nickname}</b><small>{p.words.length} unique words · {p.words.join(', ')||'No words found'}</small></div><strong>{p.score} pts</strong></div>)}</div>
       <div className="result-summary"><div><b>{Object.values(room.words).flat().length}</b><small>Unique submissions</small></div><div><b>{Object.values(room.words).flat().filter(w=>Object.values(room.words).filter(a=>a.includes(w)).length>1).length}</b><small>Shared words</small></div></div>

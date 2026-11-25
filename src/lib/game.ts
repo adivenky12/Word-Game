@@ -10,15 +10,18 @@ export function canMakeWord(board: string[], rawWord: string): boolean {
   const word = normalizeWord(rawWord)
   if (board.length !== 16 || word.length < MIN_WORD_LENGTH || !/^[A-Z]+$/.test(word)) return false
   const visit = (pos: number, offset: number, used: number): boolean => {
-    if (board[pos] !== word[offset]) return false
-    if (offset === word.length - 1) return true
+    const letters = board[pos] === 'Q' ? 'QU' : board[pos]
+    if (!word.startsWith(letters, offset)) return false
+    const nextOffset = offset + letters.length
+    if (nextOffset === word.length) return true
+    if (nextOffset > word.length) return false
     const nextUsed = used | (1 << pos)
     const row = Math.floor(pos / 4), col = pos % 4
     for (let r=Math.max(0,row-1);r<=Math.min(3,row+1);r++) {
       for (let c=Math.max(0,col-1);c<=Math.min(3,col+1);c++) {
         const next=r*4+c
         if (next===pos || (nextUsed & (1<<next))) continue
-        if (visit(next, offset+1, nextUsed)) return true
+        if (visit(next, nextOffset, nextUsed)) return true
       }
     }
     return false
