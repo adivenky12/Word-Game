@@ -1,20 +1,20 @@
-SCOWL word-list attribution
+LETTER LEAGUE - BALANCED US ENGLISH WORD LIST
 
-The bundled English word list is derived from the SCOWL (Spell Checker Oriented Word Lists) collection distributed through the Debian hunspell-en-us package. The list is filtered to alphabetic words of 3–20 letters.
+The game's accepted-word list is a curated subset of the project's prior US spelling
+lexicon, filtered using the Open American National Corpus (OANC) written word-frequency
+CSV supplied for this project. The selection includes alphabetic entries of 3-20 letters
+with at least three corpus occurrences, and excludes known British-only spelling variants
+and selected foreign-language-only/low-recognition entries. The OANC spoken frequency
+CSV was used as a cross-check.
 
-The collective work is Copyright 2000–2011 by Kevin Atkinson, together with the copyrights noted by SCOWL.
+The OANC word-frequency data are derived from the Open American National Corpus.
+The corpus and its derived resources are made available under the terms stated by
+the OANC resource provider. Consult the original OANC resource page and included
+resource documentation for the applicable license and attribution requirements.
 
-Permission to use, copy, modify, distribute and sell these word lists, the associated scripts, the output created from the scripts, and their documentation for any purpose is granted without fee, provided that this copyright notice and permission notice appear in all copies and supporting documentation. The word list is provided “as is” without express or implied warranty.
-
-SCOWL project: https://wordlist.aspell.net/
-
-
-CMU Sphinx pronunciation lexicon notice
-
-The bundled word list also includes alphabetic entries from the CMU Sphinx English pronunciation dictionary, distributed under the following BSD-style terms:
-
-Copyright 1995–2014 Carnegie Mellon University. All rights reserved. Copyright 2014–2015 Alpha Cephei Inc.
-
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the copyright notice, this list of conditions and the disclaimer are retained in source distributions and reproduced in documentation/materials for binary distributions.
-
-The dictionary is provided “AS IS”, without express or implied warranties. Carnegie Mellon University and its contributors are not liable for damages arising from its use.
+IMPORTANT LIMITATION:
+Frequency filtering is not the same as expert lexicographic review. This list is a
+balanced game vocabulary, not a complete dictionary. Corpus frequency alone cannot
+guarantee that every proper name, acronym, archaic term, or foreign-origin term has
+been identified perfectly. The list should be reviewed and refined using player
+feedback. Both frontend and Supabase use the same generated word list.
