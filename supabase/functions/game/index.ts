@@ -107,7 +107,9 @@ Deno.serve(async (req) => {
     }
     return json({error:"Unknown action."},400);
   } catch (e) {
-    console.error("game request failed", e instanceof Error ? e.message : "unknown");
-    return json({error:"The game service encountered an error. Please try again."},500);
+    console.error("game request failed:", e);
+    return json({
+      error: e instanceof Error ? e.message : "The game service encountered an error. Check function logs."
+    }, 500);
   }
 });
