@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canMakeWord, generateBoard, pointsFor } from './game'
+import { canMakeWord, findBoardWords, generateBoard, pointsFor } from './game'
 import { isDictionaryWord } from './dictionary'
 
 describe('scoring',()=>{
@@ -11,6 +11,13 @@ describe('scoring',()=>{
 })
 describe('board',()=>{
   it('generates sixteen letters',()=>expect(generateBoard()).toHaveLength(16))
+  it('always provides at least ten 3-letter and four 4-letter dictionary words',()=>{
+    for(let round=0;round<5;round++){
+      const words=[...findBoardWords(generateBoard())]
+      expect(words.filter(word=>word.length===3).length).toBeGreaterThanOrEqual(10)
+      expect(words.filter(word=>word.length===4).length).toBeGreaterThanOrEqual(4)
+    }
+  })
   it('finds a path across adjacent tiles',()=>expect(canMakeWord(['C','A','T',...'ABCDEFGHIJKLM'.split('')],'CAT')).toBe(true))
   it('treats a Q tile as QU',()=>expect(canMakeWord(['Q','A','T',...'ABCDEFGHIJKLM'.split('')],'QUAT')).toBe(true))
   it('rejects reuse of a tile',()=>expect(canMakeWord(['A','B','X','X','X','X','X','X','X','X','X','X','X','X','X','X'],'ABA')).toBe(false))

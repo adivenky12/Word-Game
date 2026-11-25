@@ -103,3 +103,7 @@ GitHub Pages and Supabase have plan limits, quotas, fair-use terms, and service 
 ### Dictionary and scoring
 
 The game accepts alphabetic US-English words from the bundled SCOWL/Hunspell-based word list and common inflected forms (3–20 letters), subject to the board path. The word list license and attribution are in `WORDLIST-LICENSE.txt`. Scoring: a word found by only one player is worth 2 points if it has 3 letters, or 5 points if it has 4 or more letters. If multiple players find the same word, it is worth 1 point to each player.
+
+## Board generation
+
+Each new round uses a freshly randomized 4×4 Boggle-style board. The game checks the bundled dictionary and only starts a round when the board contains at least **10 distinct three-letter words** and **4 distinct four-letter words** that can be formed by adjacent tiles without reusing a tile. Five-letter and longer words are optional. A `Q` tile represents `QU`.
