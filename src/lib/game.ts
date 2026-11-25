@@ -14,7 +14,16 @@ const DICE = [
 ];
 const MIN_THREE_LETTER_WORDS = 10;
 const MIN_FOUR_LETTER_WORDS = 4;
-const MAX_ATTEMPTS = 40;
+// Random boards are preferred, but generation must never fail just because a
+// short random sample missed the minimum. The fallback below is a valid roll
+// of the standard 4x4 dice and has been checked against the bundled dictionary.
+const MAX_ATTEMPTS = 100;
+const FALLBACK_BOARD = [
+  "A", "M", "N", "P",
+  "F", "A", "H", "W",
+  "Z", "Y", "E", "S",
+  "E", "U", "X", "D",
+];
 
 type Trie = { [key: string]: Trie | true };
 function buildTrie(words: Set<string>): Trie {
@@ -113,9 +122,14 @@ export function generateBoard(random: () => number = Math.random): string[] {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const candidate = randomDie(random);
     const words = findBoardWords(candidate);
-    const three = [...words].filter((word) => word.length === 3).length;
-    const four = [...words].filter((word) => word.length === 4).length;
-    const longer = [...words].filter((word) => word.length >= 5).length;
+    let three = 0;
+    let four = 0;
+    let longer = 0;
+    for (const word of words) {
+      if (word.length === 3) three++;
+      else if (word.length === 4) four++;
+      else if (word.length >= 5) longer++;
+    }
 
     if (three >= MIN_THREE_LETTER_WORDS && four >= MIN_FOUR_LETTER_WORDS) {
       return candidate;
@@ -129,14 +143,32 @@ export function generateBoard(random: () => number = Math.random): string[] {
     }
   }
 
-  // Never silently start a round with a board below the promised minimums.
+  // A verified standard-dice fallback prevents a transient random-generation
+  // failure from turning Start Round into an HTTP 500. Re-check it at runtime
+  // so dictionary changes can never silently violate the minimums.
+  const fallbackWords = findBoardWords(FALLBACK_BOARD);
+  let fallbackThree = 0;
+  let fallbackFour = 0;
+  for (const word of fallbackWords) {
+    if (word.length === 3) fallbackThree++;
+    else if (word.length === 4) fallbackFour++;
+  }
+  if (fallbackThree >= MIN_THREE_LETTER_WORDS && fallbackFour >= MIN_FOUR_LETTER_WORDS) {
+    return [...FALLBACK_BOARD];
+  }
+
+  // Retain the best random candidate only if it independently meets the rules.
   if (bestBoard) {
     const words = findBoardWords(bestBoard);
-    const three = [...words].filter((word) => word.length === 3).length;
-    const four = [...words].filter((word) => word.length === 4).length;
+    let three = 0;
+    let four = 0;
+    for (const word of words) {
+      if (word.length === 3) three++;
+      else if (word.length === 4) four++;
+    }
     if (three >= MIN_THREE_LETTER_WORDS && four >= MIN_FOUR_LETTER_WORDS) return bestBoard;
   }
-  throw new Error("Could not generate a board with enough common words. Please try starting the round again.");
+  throw new Error("Board generation could not verify the minimum word counts. Check the deployed dictionary and game logic.");
 }
 
 export function canMakeWord(board: string[], word: string): boolean {

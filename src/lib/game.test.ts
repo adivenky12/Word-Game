@@ -18,6 +18,13 @@ describe('board',()=>{
       expect(words.filter(word=>word.length===4).length).toBeGreaterThanOrEqual(4)
     }
   })
+  it('uses a verified fallback rather than failing when random rolls never qualify',()=>{
+    const board=generateBoard(()=>0)
+    const words=[...findBoardWords(board)]
+    expect(board).toHaveLength(16)
+    expect(words.filter(word=>word.length===3).length).toBeGreaterThanOrEqual(10)
+    expect(words.filter(word=>word.length===4).length).toBeGreaterThanOrEqual(4)
+  })
   it('finds a path across adjacent tiles',()=>expect(canMakeWord(['C','A','T',...'ABCDEFGHIJKLM'.split('')],'CAT')).toBe(true))
   it('treats a Q tile as QU',()=>expect(canMakeWord(['Q','A','T',...'ABCDEFGHIJKLM'.split('')],'QUAT')).toBe(true))
   it('rejects reuse of a tile',()=>expect(canMakeWord(['A','B','X','X','X','X','X','X','X','X','X','X','X','X','X','X'],'ABA')).toBe(false))
