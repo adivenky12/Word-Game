@@ -70,6 +70,31 @@ export function findBoardWords(board: string[]): Set<string> {
   return found;
 }
 
+export type RoundWordStats = { soloWords: string[]; sharedWords: string[]; missedWords: string[] };
+
+/** Counts distinct words by how many different players found them, and lists valid board words nobody submitted. */
+export function getRoundWordStats(board: string[], submissions: Record<string, string[]>): RoundWordStats {
+  const soloWords: string[] = [];
+  const sharedWords: string[] = [];
+  const submitted = new Set<string>();
+
+  for (const [rawWord, rawOwners] of Object.entries(submissions)) {
+    const word = rawWord.toUpperCase();
+    const owners = new Set(rawOwners);
+    if (owners.size === 0) continue;
+    submitted.add(word);
+    if (owners.size === 1) soloWords.push(word);
+    else sharedWords.push(word);
+  }
+
+  const missedWords = [...findBoardWords(board)].filter((word) => !submitted.has(word));
+  const sortWords = (a: string, b: string) => a.length - b.length || a.localeCompare(b);
+  soloWords.sort(sortWords);
+  sharedWords.sort(sortWords);
+  missedWords.sort(sortWords);
+  return { soloWords, sharedWords, missedWords };
+}
+
 function randomDie(random: () => number): string[] {
   const dice = [...DICE];
   for (let i = dice.length - 1; i > 0; i--) {

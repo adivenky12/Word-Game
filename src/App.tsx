@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Copy, Crown, DoorOpen, Gamepad2, Link2, Loader2, RefreshCw, Users, Volume2, VolumeX } from 'lucide-react'
 import { api, configured, supabase } from './lib/supabase'
-import { DEFAULT_SECONDS } from './lib/game'
+import { DEFAULT_SECONDS, getRoundWordStats } from './lib/game'
 
 type Player = { id: string; nickname: string; score: number; online: boolean; words: string[] }
 type Room = { code: string; hostId: string; status: 'lobby'|'playing'|'finished'; players: Player[]; board: string[]; startedAt: number|null; deadline: number|null; seconds: number; liveScores: boolean; words: Record<string,string[]>; invalid: Record<string,string[]>; createdAt: number }
@@ -210,6 +210,7 @@ export default function App() {
           : index + 1
   const placeLabel=(place:number)=>`${place}${place===1?'st':place===2?'nd':place===3?'rd':'th'}`
   const myWords=me?.words||[]
+  const roundWordStats=useMemo(()=>room ? getRoundWordStats(room.board,room.words) : {soloWords:[],sharedWords:[],missedWords:[]},[room?.board,room?.words])
 
   useEffect(()=>()=> {
     const active=audioRef.current
@@ -274,8 +275,9 @@ export default function App() {
       </div>
       <aside className="panel score-panel"><div className="score-title"><h2><Crown size={18}/> Leaderboard</h2><button className="ghost small music-toggle" onClick={()=>void toggleMusic()} aria-label={sound?'Turn music off':'Turn music on'}>{sound?<Volume2 size={17}/>:<VolumeX size={17}/>} {sound?'Music on':'Enable music'}</button></div>{leaderboard.map((p,i)=>{const place=placeFor(i);return <div className={`score-row ${place<=3?`score-place-${place}`:''}`} key={p.id}><span className="rank">{placeLabel(place)}</span><span className="score-name">{p.nickname}{p.id===playerId?' (you)':''}</span>{room.liveScores&&<b>{p.score} pts</b>}</div>})}<p className="muted tiny scoring-help">Scoring: shared word = 1 point each · solo 3-letter word = 2 points · solo word of 4+ letters = 5 points.</p><button className="ghost wide" onClick={refresh}>Refresh status</button></aside>
     </section>}
-    {screen==='results' && room && <section className="panel results-panel"><span className="eyebrow">ROUND COMPLETE</span><h1>Well <em>played!</em></h1><p className="muted">Here’s how your word hunters did.</p><div className="leaderboard">{leaderboard.map((p,i)=>{const place=placeFor(i);return <div className={`leader-row ${place<=3?`leader-place-${place}`:''}`} key={p.id}><span className="rank">{placeLabel(place)}</span><div className="leader-detail"><b>{p.nickname}{place===1?' · Winner':''}</b><small>{p.words.length} unique words · {p.words.join(', ')||'No words found'}</small></div><strong>{p.score} pts</strong></div>})}</div>
-      <div className="result-summary"><div><b>{Object.values(room.words).flat().length}</b><small>Unique submissions</small></div><div><b>{Object.values(room.words).flat().filter(w=>Object.values(room.words).filter(a=>a.includes(w)).length>1).length}</b><small>Shared words</small></div></div>
+    {screen==='results' && room && <section className="panel results-panel"><span className="eyebrow">ROUND COMPLETE</span><h1>Well <em>played!</em></h1><p className="muted">Here’s how your word hunters did.</p><div className="leaderboard">{leaderboard.map((p,i)=>{const place=placeFor(i);return <div className={`leader-row ${place<=3?`leader-place-${place}`:''}`} key={p.id}><span className="rank">{placeLabel(place)}</span><div className="leader-detail"><b>{p.nickname}{place===1?' · Winner':''}</b><small>{p.words.length} words found · {p.words.join(', ')||'No words found'}</small></div><strong>{p.score} pts</strong></div>})}</div>
+      <div className="result-summary"><div><b>{roundWordStats.soloWords.length}</b><small>Unique words (one player)</small></div><div><b>{roundWordStats.sharedWords.length}</b><small>Shared words (2+ players)</small></div></div>
+      <section className="missed-words"><div className="missed-heading"><div><h2>Words you missed</h2><p>Valid words from this round’s board that nobody submitted.</p></div><span className="missed-count">{roundWordStats.missedWords.length}</span></div>{roundWordStats.missedWords.length ? <div className="missed-word-list">{roundWordStats.missedWords.map(w=><span className="word-chip missed-chip" key={w}>{w}</span>)}</div> : <p className="all-found">Amazing! Your group found every valid word on this board.</p>}</section>
       {room.hostId===playerId?<button className="primary wide" onClick={()=>run('replay',{code:room.code})}> <RefreshCw size={17}/> Play again</button>:<p className="waiting-note">The host can start another round when ready.</p>}
     </section>}
     {message&&<div className="toast" role="status">{message}</div>}

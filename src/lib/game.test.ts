@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canMakeWord, findBoardWords, generateBoard, pointsFor } from './game'
+import { canMakeWord, findBoardWords, generateBoard, getRoundWordStats, pointsFor } from './game'
 import { isDictionaryWord } from './dictionary'
 
 describe('scoring',()=>{
@@ -30,3 +30,16 @@ describe('dictionary',()=>{
   })
   it('rejects words shorter than three letters',()=>expect(isDictionaryWord('AT')).toBe(false))
 })
+
+
+describe('round word results',()=>{
+  it('counts distinct solo and shared words once and lists missed board words',()=>{
+    const board=['C','A','T','D','O','G','R','E','S','T','L','I','N','P','A','Y'];
+    const stats=getRoundWordStats(board,{CAT:['p1'],DOG:['p1','p2'],CAR:['p1','p1']});
+    expect(stats.soloWords).toContain('CAT');
+    expect(stats.soloWords).toContain('CAR');
+    expect(stats.sharedWords).toEqual(['DOG']);
+    expect(stats.missedWords).toEqual(expect.arrayContaining(['REST','PLAY']));
+    expect(stats.soloWords.length).toBe(new Set(stats.soloWords).size);
+  });
+});
